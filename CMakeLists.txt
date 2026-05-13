@@ -7,7 +7,7 @@ endif()
 
 project ("profiler")
 
-add_executable (profiler "source/profiler.cpp" "include/profiler.h" "include/MemoryTracker.h" "source/MemoryTracker.cpp" "source/main.cpp")
+add_executable (profiler "include/MemoryTracker.h" "source/MemoryTracker.cpp" "source/main.cpp" "include/AllocationRegistry.h" "source/AllocationRegistry.cpp")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET profiler PROPERTY CXX_STANDARD 20)

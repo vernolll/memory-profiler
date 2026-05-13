@@ -1,20 +1,33 @@
 #include "../include/MemoryTracker.h"
-
+#include "../include/AllocationRegistry.h"
 #include <cstdlib>
 #include <iostream>
 
-
-void OnAlloc(void* ptr, std::size_t size)
+int CaptureStack(void** buffer, int maxFrames) 
 {
-    std::printf("[ALLOC] Address: %p, Size: %llu bytes\n", ptr, (unsigned long long)size);
+#ifdef _WIN32
+    return CaptureStackBackTrace(2, maxFrames, buffer, nullptr);
+#elif defined(__linux__)
+    int frames = backtrace(buffer, maxFrames);
+    return frames;
+#else
+    return 0;
+#endif
 }
 
-void OnFree(void* ptr)
+void OnAlloc(void* ptr, std::size_t size) 
 {
-    if (ptr)
-    {
-        std::printf("[FREE ] Address: %p\n", ptr);
-    }
+    void* stack[12];
+    for (int i = 0; i < 12; ++i) stack[i] = nullptr;
+
+    int frames = CaptureStack(stack, 12);
+
+    g_Registry.Add(ptr, size, stack, frames);
+}
+
+void OnFree(void* ptr) 
+{
+    g_Registry.Remove(ptr);
 }
 
 void* operator new(std::size_t size) 
