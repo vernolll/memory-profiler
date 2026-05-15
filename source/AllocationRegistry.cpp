@@ -1,9 +1,10 @@
-#include "../include/AllocationRegistry.h"
 #include <cstdlib>
 #include <cstring>
 #include <chrono>
 #include <windows.h>
 #include "../include/SharedMemory.h"
+#include "../include/AllocationRegistry.h"
+#include "../include/TrackerState.h"
 
 AllocationRegistry g_Registry;
 
@@ -15,8 +16,10 @@ struct WinSharedMem
 
 static WinSharedMem g_Shm = { NULL, nullptr };
 
-AllocationRegistry::AllocationRegistry()
+AllocationRegistry::AllocationRegistry() : m_records(nullptr)
 {
+    TrackerGuard guard;
+
     size_t shmSize = sizeof(SharedMemoryPayload);
 
     g_Shm.hMapFile = CreateFileMappingA(
@@ -25,7 +28,7 @@ AllocationRegistry::AllocationRegistry()
         PAGE_READWRITE,
         0,
         (DWORD)shmSize,
-        "Global\\CppMemoryProfilerShm" 
+        "Local\\CppMemoryProfilerShm" 
     );
 
     if (g_Shm.hMapFile == NULL) 
@@ -57,7 +60,9 @@ AllocationRegistry::~AllocationRegistry()
     std::free(m_records);
 }
 
-void AllocationRegistry::Add(void* ptr, std::size_t size, void** stack, int stackFrames) {
+void AllocationRegistry::Add(void* ptr, std::size_t size, void** stack, int stackFrames)
+{
+    if (g_InTracker || m_records == nullptr) return;
     if (!ptr || !g_Shm.payload) return;
 
     size_t index = Hash(ptr);
@@ -85,6 +90,7 @@ void AllocationRegistry::Add(void* ptr, std::size_t size, void** stack, int stac
 
 void AllocationRegistry::Remove(void* ptr) 
 {
+    if (g_InTracker || m_records == nullptr) return;
     if (!ptr || !g_Shm.payload) return;
 
     size_t index = Hash(ptr);

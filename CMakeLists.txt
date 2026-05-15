@@ -1,14 +1,33 @@
 ﻿cmake_minimum_required (VERSION 3.8)
-
-if (POLICY CMP0141)
-  cmake_policy(SET CMP0141 NEW)
-  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
-endif()
-
 project ("profiler")
 
-add_executable (profiler "include/MemoryTracker.h" "source/MemoryTracker.cpp" "source/main.cpp" "include/AllocationRegistry.h" "source/AllocationRegistry.cpp"  "include/SharedMemory.h")
+set(CMAKE_BUILD_TYPE Debug)
+
+if(MSVC)
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /DEBUG:FULL")
+    set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /DEBUG:FULL")
+
+    add_compile_options(/Od /Zi)
+endif()
+
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
+
+find_package(Qt5 REQUIRED COMPONENTS Core Widgets Gui)
+
+add_executable (profiler "include/MemoryTracker.h" "source/MemoryTracker.cpp" "source/main.cpp" "include/AllocationRegistry.h" "source/AllocationRegistry.cpp"  "include/SharedMemory.h" "include/SymbolResolver.h" "source/SymbolResolver.cpp" "include/TrackerState.h")
+
+target_link_libraries(${PROJECT_NAME} PRIVATE 
+    Qt5::Core 
+    Qt5::Widgets 
+    Qt5::Gui
+)
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET profiler PROPERTY CXX_STANDARD 20)
+endif()
+
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE DbgHelp)
 endif()

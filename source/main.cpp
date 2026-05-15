@@ -5,35 +5,53 @@
 #include "../include/MemoryTracker.h"
 #include "../include/AllocationRegistry.h"
 #include "../include/SharedMemory.h"
+#include "../include/SymbolResolver.h"
 
-void BusinessLogic() 
+void InnerFunction() 
 {
-    int* data = new int[rand() % 100 + 1];
+    int* data = new int[5];
+    std::printf("  Allocated 5 ints in InnerFunction at %p\n", (void*)data);
+}
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 50));
+void MiddleFunction() 
+{
+    InnerFunction();
+}
 
-    if (rand() % 10 > 2) 
-    {
-        delete[] data;
-    }
+void TopFunction()
+{
+    MiddleFunction();
 }
 
 int main() 
 {
-    srand(static_cast<unsigned int>(time(NULL)));
+    SymbolResolver resolver;
 
-    int iteration = 0;
-    while (true) 
+    TopFunction();
+
+    AllocationRecord* records = AllocationRegistry::getInstance().GetRawData();
+
+    for (size_t i = 0; i < AllocationRegistry::MAX_RECORDS; ++i) 
     {
-        BusinessLogic();
-
-        if (++iteration % 100 == 0) 
+        if (records[i].active.load())
         {
-            std::printf("Total operations tracked: %d\n", iteration);
-        }
+            std::printf("Block: %p (%zu bytes)\n", records[i].address, records[i].size);
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            std::vector<ResolvedFrame> frames = resolver.Resolve(records[i].callstack, 12);
+
+            for (const auto& frame : frames) 
+            {
+                if (!frame.functionName.empty()) 
+                {
+                    std::printf("  -> %s (%s:%u)\n",
+                        frame.functionName.c_str(),
+                        frame.fileName.c_str(),
+                        frame.lineNumber);
+                }
+            }
+        }
     }
+    std::getchar();
 
     return 0;
 }

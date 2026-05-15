@@ -5,11 +5,11 @@
 
 struct AllocationRecord 
 {
-    void* address;                        // Адрес блока (ключ)
-    std::size_t size;                     // Размер
-    uint64_t timestamp;                   // Метка времени (в мс или тиках)
-    void* callstack[12];                  // Глубина стека
-    std::atomic<bool> active{ false };    // Флаг занятости ячейки в таблице
+    void* address;
+    std::size_t size;
+    uint64_t timestamp;
+    void* callstack[12];
+    std::atomic<bool> active{ false };
 };
 
 class AllocationRegistry 
@@ -26,6 +26,12 @@ public:
 
     AllocationRecord* GetRawData() { return m_records; }
 
+    static AllocationRegistry& getInstance() 
+    {
+        static AllocationRegistry instance;
+        return instance;
+    }
+
 private:
     size_t Hash(void* ptr) const 
     {
@@ -34,5 +40,3 @@ private:
 
     AllocationRecord* m_records;
 };
-
-extern AllocationRegistry g_Registry;
