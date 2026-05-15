@@ -2,17 +2,53 @@
 #include <cstdlib>
 #include <cstring>
 #include <chrono>
+#include <windows.h>
+#include "../include/SharedMemory.h"
 
 AllocationRegistry g_Registry;
 
-AllocationRegistry::AllocationRegistry() 
+struct WinSharedMem 
 {
-    m_records = (AllocationRecord*)std::malloc(sizeof(AllocationRecord) * MAX_RECORDS);
+    HANDLE hMapFile;
+    SharedMemoryPayload* payload;
+};
 
-    for (size_t i = 0; i < MAX_RECORDS; ++i)
+static WinSharedMem g_Shm = { NULL, nullptr };
+
+AllocationRegistry::AllocationRegistry()
+{
+    size_t shmSize = sizeof(SharedMemoryPayload);
+
+    g_Shm.hMapFile = CreateFileMappingA(
+        INVALID_HANDLE_VALUE,
+        NULL,
+        PAGE_READWRITE,
+        0,
+        (DWORD)shmSize,
+        "Global\\CppMemoryProfilerShm" 
+    );
+
+    if (g_Shm.hMapFile == NULL) 
     {
-        m_records[i].address = nullptr;
-        m_records[i].active.store(false);
+        return;
+    }
+
+    g_Shm.payload = (SharedMemoryPayload*)MapViewOfFile(
+        g_Shm.hMapFile,
+        FILE_MAP_ALL_ACCESS,
+        0, 0, shmSize
+    );
+
+    if (g_Shm.payload) 
+    {
+        m_records = g_Shm.payload->records;
+
+        g_Shm.payload->changeCounter = 0;
+
+        for (size_t i = 0; i < MAX_RECORDS; ++i)
+        {
+            m_records[i].active.store(false);
+        }
     }
 }
 
@@ -21,9 +57,8 @@ AllocationRegistry::~AllocationRegistry()
     std::free(m_records);
 }
 
-void AllocationRegistry::Add(void* ptr, std::size_t size, void** stack, int stackFrames) 
-{
-    if (!ptr) return;
+void AllocationRegistry::Add(void* ptr, std::size_t size, void** stack, int stackFrames) {
+    if (!ptr || !g_Shm.payload) return;
 
     size_t index = Hash(ptr);
     uint64_t now = std::chrono::steady_clock::now().time_since_epoch().count();
@@ -33,7 +68,7 @@ void AllocationRegistry::Add(void* ptr, std::size_t size, void** stack, int stac
         size_t curr = (index + i) % MAX_RECORDS;
 
         bool expected = false;
-        if (m_records[curr].active.compare_exchange_strong(expected, true))
+        if (m_records[curr].active.compare_exchange_strong(expected, true)) 
         {
             m_records[curr].address = ptr;
             m_records[curr].size = size;
@@ -42,6 +77,7 @@ void AllocationRegistry::Add(void* ptr, std::size_t size, void** stack, int stac
             int frames = (stackFrames < 12) ? stackFrames : 12;
             std::memcpy(m_records[curr].callstack, stack, frames * sizeof(void*));
 
+            InterlockedIncrement(&g_Shm.payload->changeCounter);
             return;
         }
     }
@@ -49,7 +85,7 @@ void AllocationRegistry::Add(void* ptr, std::size_t size, void** stack, int stac
 
 void AllocationRegistry::Remove(void* ptr) 
 {
-    if (!ptr) return;
+    if (!ptr || !g_Shm.payload) return;
 
     size_t index = Hash(ptr);
 
@@ -57,16 +93,15 @@ void AllocationRegistry::Remove(void* ptr)
     {
         size_t curr = (index + i) % MAX_RECORDS;
 
-        if (m_records[curr].active.load() && m_records[curr].address == ptr) 
+        if (m_records[curr].active.load() && m_records[curr].address == ptr)
         {
             m_records[curr].address = nullptr;
             m_records[curr].active.store(false);
+
+            InterlockedIncrement(&g_Shm.payload->changeCounter);
             return;
         }
 
-        if (!m_records[curr].active.load() && m_records[curr].address == nullptr) 
-        {
-            break;
-        }
+        if (!m_records[curr].active.load() && m_records[curr].address == nullptr) break;
     }
 }

@@ -2,6 +2,29 @@
 #include "../include/AllocationRegistry.h"
 #include <cstdlib>
 #include <iostream>
+#include <thread>
+
+static thread_local bool g_InTracker = false;
+
+struct TrackerGuard 
+{
+    TrackerGuard() { g_InTracker = true; }
+    ~TrackerGuard() { g_InTracker = false; }
+};
+
+void* operator new(std::size_t size)
+{
+    if (g_InTracker)
+    {
+        return std::malloc(size);
+    }
+
+    TrackerGuard guard;
+    void* ptr = std::malloc(size);
+    if (!ptr) throw std::bad_alloc();
+    OnAlloc(ptr, size);
+    return ptr;
+}
 
 int CaptureStack(void** buffer, int maxFrames) 
 {
@@ -30,56 +53,13 @@ void OnFree(void* ptr)
     g_Registry.Remove(ptr);
 }
 
-void* operator new(std::size_t size) 
-{
-    void* ptr = std::malloc(size);
-    if (!ptr) throw std::bad_alloc();
-    OnAlloc(ptr, size);
-    return ptr;
-}
-
 void operator delete(void* ptr) noexcept 
 {
     OnFree(ptr);
     std::free(ptr);
 }
 
-void* operator new[](std::size_t size) 
-{
-    void* ptr = std::malloc(size);
-    if (!ptr) throw std::bad_alloc();
-    OnAlloc(ptr, size);
-    return ptr;
-}
-
 void operator delete[](void* ptr) noexcept
-{
-    OnFree(ptr);
-    std::free(ptr);
-}
-
-
-void* operator new(std::size_t size, const std::nothrow_t&) noexcept 
-{
-    void* ptr = std::malloc(size);
-    if (ptr) OnAlloc(ptr, size);
-    return ptr;
-}
-
-void operator delete(void* ptr, const std::nothrow_t&) noexcept 
-{
-    OnFree(ptr);
-    std::free(ptr);
-}
-
-void* operator new[](std::size_t size, const std::nothrow_t&) noexcept
-{
-    void* ptr = std::malloc(size);
-    if (ptr) OnAlloc(ptr, size);
-    return ptr;
-}
-
-void operator delete[](void* ptr, const std::nothrow_t&) noexcept 
 {
     OnFree(ptr);
     std::free(ptr);

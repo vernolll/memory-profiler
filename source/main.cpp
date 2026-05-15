@@ -1,68 +1,39 @@
 #include <iostream>
 #include <vector>
+#include <chrono>
+#include <thread>
 #include "../include/MemoryTracker.h"
 #include "../include/AllocationRegistry.h"
+#include "../include/SharedMemory.h"
 
-void PrintMemoryReport() 
+void BusinessLogic() 
 {
-    AllocationRecord* records = g_Registry.GetRawData();
-    int activeCount = 0;
+    int* data = new int[rand() % 100 + 1];
 
-    for (size_t i = 0; i < AllocationRegistry::MAX_RECORDS; ++i)
-    {
-        if (records[i].active.load()) 
-        {
-            activeCount++;
-            std::printf("Block [%d]: Address: %p, Size: %zu bytes\n",
-                activeCount, records[i].address, records[i].size);
+    std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 50));
 
-            std::printf("  Callstack: ");
-            for (int j = 0; j < 3; ++j) 
-            {
-                if (records[i].callstack[j]) 
-                {
-                    std::printf("%p ", records[i].callstack[j]);
-                }
-            }
-            std::printf("\n");
-        }
-    }
-
-    if (activeCount == 0) 
+    if (rand() % 10 > 2) 
     {
-        std::printf("No active allocations found.\n");
-    }
-    else
-    {
-        std::printf("Total active blocks: %d\n", activeCount);
+        delete[] data;
     }
 }
 
 int main() 
 {
-    int* singleInt = new int(42);
+    srand(static_cast<unsigned int>(time(NULL)));
 
-    double* myMatrix = new double[10];
+    int iteration = 0;
+    while (true) 
+    {
+        BusinessLogic();
 
-    std::printf("Simulating fragmentation...\n");
-    char* chunk1 = new char[128];
-    char* chunk2 = new char[128];
-    char* chunk3 = new char[128];
-    char* chunk4 = new char[128];
-    char* chunk5 = new char[128];
+        if (++iteration % 100 == 0) 
+        {
+            std::printf("Total operations tracked: %d\n", iteration);
+        }
 
-    delete[] chunk2;
-    delete[] chunk4;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
 
-    delete singleInt;
-
-    PrintMemoryReport();
-
-    delete[] myMatrix;
-    delete[] chunk1;
-    delete[] chunk3;
-    delete[] chunk5;
-
-    std::printf("Test completed.\n");
     return 0;
 }

@@ -13,7 +13,7 @@ void OnFree(void* ptr);
 
 int CaptureStack(void** buffer, int maxFrames);
 
-void* operator new(std::size_t size); 
+void* operator new(std::size_t size) noexcept; 
 
 void operator delete(void* ptr) noexcept;
 
