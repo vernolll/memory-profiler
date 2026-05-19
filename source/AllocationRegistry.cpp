@@ -2,9 +2,9 @@
 #include <cstring>
 #include <chrono>
 #include <windows.h>
-#include "../include/SharedMemory.h"
-#include "../include/AllocationRegistry.h"
-#include "../include/TrackerState.h"
+#include "SharedMemory.h"
+#include "AllocationRegistry.h"
+#include "TrackerState.h"
 
 AllocationRegistry g_Registry;
 

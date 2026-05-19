@@ -1,4 +1,4 @@
-﻿#include "../../include/ui/MonitorWindow.h"
+﻿#include "MonitorWindow.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -17,51 +17,80 @@ MonitorWindow::MonitorWindow(QWidget* parent) : QWidget(parent)
 
 void MonitorWindow::initLayout()
 {
-    QHBoxLayout* mainLayout = new QHBoxLayout(this);
-    QVBoxLayout* leftLayout = new QVBoxLayout();
+    QVBoxLayout* totalLayout = new QVBoxLayout(this);
+
+    QHBoxLayout* topControlLayout = new QHBoxLayout();
+
+    QLabel* filterLabel = new QLabel("Size Filter:", this);
+    filterLabel->setStyleSheet("color: #fff; font-weight: bold;");
+
+    m_filterCombo = new QComboBox(this);
+    m_filterCombo->addItem("All allocations", QVariant(0));
+    m_filterCombo->addItem("> 32 bytes", QVariant(32));
+    m_filterCombo->addItem("> 512 bytes", QVariant(512));
+    m_filterCombo->addItem("> 4 KB (Page)", QVariant(4096));
+    m_filterCombo->setStyleSheet("background-color: #3C3C3C; color: #fff; padding: 3px; border: 1px solid #555;");
+
+    connect(m_filterCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MonitorWindow::applyFilter);
+
+    m_reconnectButton = new QPushButton("Reconnect SHM", this);
+    m_reconnectButton->setStyleSheet(
+        "QPushButton { background-color: #0E639C; color: white; border: none; padding: 5px 10px; font-weight: bold; }"
+        "QPushButton:hover { background-color: #1177BB; }"
+        "QPushButton:pressed { background-color: #0C517F; }"
+    );
+    connect(m_reconnectButton, &QPushButton::clicked, this, &MonitorWindow::forceReconnect);
+
+    topControlLayout->addWidget(filterLabel);
+    topControlLayout->addWidget(m_filterCombo);
+    topControlLayout->addSpacing(20);
+    topControlLayout->addWidget(m_reconnectButton);
+    topControlLayout->addStretch();
+
+    totalLayout->addLayout(topControlLayout);
 
     m_statusLabel = new QLabel("Status: Pending connection...", this);
     m_statusLabel->setStyleSheet("font-weight: bold; font-size: 13px; color: gray;");
-    leftLayout->addWidget(m_statusLabel);
+    totalLayout->addWidget(m_statusLabel);
 
-    m_infoLabel = new QLabel("Active allocations: 0 | Total operations: 0", this);
+    m_infoLabel = new QLabel("Active blocks in the heap: 0 | Total IPC operations: 0", this);
     m_infoLabel->setStyleSheet("color: #aaa; margin-bottom: 5px;");
-    leftLayout->addWidget(m_infoLabel);
+    totalLayout->addWidget(m_infoLabel);
+
+    QHBoxLayout* workLayout = new QHBoxLayout();
 
     m_memoryMap = new MemoryMapWidget(this);
-    leftLayout->addWidget(m_memoryMap, 1);
+    workLayout->addWidget(m_memoryMap, 2);
 
     QVBoxLayout* rightLayout = new QVBoxLayout();
-    QLabel* callstackTitle = new QLabel("Allocation call stack (Call Stack):", this);
+    QLabel* callstackTitle = new QLabel("Allocation call stack:", this);
     callstackTitle->setStyleSheet("font-weight: bold; color: #569CD6;");
 
     m_callstackList = new CallstackWidget(this);
 
     rightLayout->addWidget(callstackTitle);
     rightLayout->addWidget(m_callstackList);
-    
-    mainLayout->addLayout(leftLayout, 3);
-    mainLayout->addLayout(rightLayout, 1);
+    workLayout->addLayout(rightLayout, 1);
 
-    connect(m_memoryMap, &MemoryMapWidget::recordSelected, this, [this](int regIndex) {
+    totalLayout->addLayout(workLayout, 1); 
+
+    connect(m_memoryMap, &MemoryMapWidget::recordSelected, this, [this](int regIndex) 
+        {
         if (!m_payload) return;
 
-        m_callstackList->clear();
-
         AllocationRecord& record = m_payload->records[regIndex];
-
         if (!record.active.load(std::memory_order_relaxed)) 
         {
-            m_callstackList->showMessage("[The record has already been released by the target application]");
+            m_callstackList->showMessage("[The block has already been released by the target application]");
             return;
         }
 
-        std::vector<ResolvedFrame> frames = m_resolver.Resolve(record.callstack, 12);
+        std::vector<ResolvedFrame> rawFrames = m_resolver.Resolve(record.callstack, 12);
 
         QVector<CallstackFrameItem> widgetFrames;
-        for (const auto& f : frames)
+        for (const auto& f : rawFrames) 
         {
-            if (!f.functionName.empty())
+            if (!f.functionName.empty()) 
             {
                 widgetFrames.append({ f.functionName, f.fileName, f.lineNumber });
             }
@@ -103,6 +132,7 @@ void MonitorWindow::updateProfilerData()
         m_lastChangeCount = currentCount;
 
         size_t activeAllocations = 0;
+
         for (size_t i = 0; i < AllocationRegistry::MAX_RECORDS; ++i) 
         {
             if (m_payload->records[i].active.load(std::memory_order_relaxed)) 
@@ -111,11 +141,12 @@ void MonitorWindow::updateProfilerData()
             }
         }
 
-        m_infoLabel->setText(QString("Active blocks in the heap: %1 | Total IPC operations: %2")
+        m_infoLabel->setText(QString("Active blocks in the heap: %1 | Total IPC operations: %2 | Filter threshold: %3 bytes")
             .arg(activeAllocations)
-            .arg(currentCount));
+            .arg(currentCount)
+            .arg(m_minSizeFilter));
 
-        m_memoryMap->updateData(m_payload->records, AllocationRegistry::MAX_RECORDS);
+        m_memoryMap->updateData(m_payload->records, AllocationRegistry::MAX_RECORDS, m_minSizeFilter);
     }
 }
 
@@ -123,4 +154,25 @@ MonitorWindow::~MonitorWindow()
 {
     if (m_payload) UnmapViewOfFile(m_payload);
     if (m_hMapFile) CloseHandle(m_hMapFile);
+}
+
+void MonitorWindow::applyFilter(int index)
+{
+    m_minSizeFilter = m_filterCombo->itemData(index).toULongLong();
+
+    m_lastChangeCount = 0;
+    updateProfilerData();
+}
+
+void MonitorWindow::forceReconnect()
+{
+    if (m_payload) UnmapViewOfFile(m_payload);
+    if (m_hMapFile) CloseHandle(m_hMapFile);
+
+    m_payload = nullptr;
+    m_hMapFile = NULL;
+    m_lastChangeCount = 0;
+
+    m_callstackList->clear();
+    connectToSharedMemory();
 }

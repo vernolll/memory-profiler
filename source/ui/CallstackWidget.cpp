@@ -1,4 +1,4 @@
-﻿#include "../../include/ui/CallstackWidget.h"
+﻿#include "CallstackWidget.h"
 
 #include <QFont>
 #include <QFileInfo>
@@ -44,6 +44,7 @@ void CallstackWidget::displayCallstack(void* address, size_t size, const QVector
     headerFont.setBold(true);
     headerItem->setFont(headerFont);
     addItem(headerItem);
+    this->setWordWrap(true);
 
     if (frames.isEmpty()) 
     {

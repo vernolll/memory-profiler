@@ -1,6 +1,6 @@
-#include "../include/MemoryTracker.h"
-#include "../include/AllocationRegistry.h"
-#include "../include/TrackerState.h"
+#include "MemoryTracker.h"
+#include "AllocationRegistry.h"
+#include "TrackerState.h"
 #include <cstdlib>
 #include <iostream>
 #include <thread>

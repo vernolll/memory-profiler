@@ -19,7 +19,7 @@ public:
     explicit MemoryMapWidget(QWidget* parent = nullptr);
     ~MemoryMapWidget() = default;
 
-    void updateData(AllocationRecord* records, size_t maxRecords);
+    void updateData(AllocationRecord* records, size_t maxRecords, size_t minSizeFilter = 0);
 
 signals:
     void recordSelected(int registryIndex);
