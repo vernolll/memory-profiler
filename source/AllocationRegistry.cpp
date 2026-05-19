@@ -57,7 +57,17 @@ AllocationRegistry::AllocationRegistry() : m_records(nullptr)
 
 AllocationRegistry::~AllocationRegistry()
 {
-    std::free(m_records);
+    if (g_Shm.payload)
+    {
+        UnmapViewOfFile(g_Shm.payload);
+        g_Shm.payload = nullptr;
+    }
+
+    if (g_Shm.hMapFile != NULL)
+    {
+        CloseHandle(g_Shm.hMapFile);
+        g_Shm.hMapFile = NULL;
+    }
 }
 
 void AllocationRegistry::Add(void* ptr, std::size_t size, void** stack, int stackFrames)
@@ -68,12 +78,14 @@ void AllocationRegistry::Add(void* ptr, std::size_t size, void** stack, int stac
     size_t index = Hash(ptr);
     uint64_t now = std::chrono::steady_clock::now().time_since_epoch().count();
 
-    for (size_t i = 0; i < MAX_RECORDS; ++i) 
+    const size_t MAX_PROBES = 32;
+
+    for (size_t i = 0; i < MAX_PROBES; ++i)
     {
         size_t curr = (index + i) % MAX_RECORDS;
 
         bool expected = false;
-        if (m_records[curr].active.compare_exchange_strong(expected, true)) 
+        if (m_records[curr].active.compare_exchange_strong(expected, true))
         {
             m_records[curr].address = ptr;
             m_records[curr].size = size;

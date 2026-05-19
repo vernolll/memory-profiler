@@ -16,7 +16,7 @@ set(CMAKE_AUTORCC ON)
 
 find_package(Qt5 REQUIRED COMPONENTS Core Widgets Gui)
 
-add_executable (profiler "include/MemoryTracker.h" "source/MemoryTracker.cpp" "source/main.cpp" "include/AllocationRegistry.h" "source/AllocationRegistry.cpp"  "include/SharedMemory.h" "include/SymbolResolver.h" "source/SymbolResolver.cpp" "include/TrackerState.h")
+add_executable (profiler "include/MemoryTracker.h" "source/MemoryTracker.cpp" "source/main.cpp" "include/AllocationRegistry.h" "source/AllocationRegistry.cpp"  "include/SharedMemory.h" "include/SymbolResolver.h" "source/SymbolResolver.cpp" "include/TrackerState.h" "include/ui/MainWindow.h" "source/ui/MainWindow.cpp" "include/ui/MonitorWindow.h" "source/ui/MonitorWindow.cpp")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE 
     Qt5::Core 

@@ -1,57 +1,14 @@
-#include <iostream>
-#include <vector>
-#include <chrono>
-#include <thread>
-#include "../include/MemoryTracker.h"
-#include "../include/AllocationRegistry.h"
-#include "../include/SharedMemory.h"
-#include "../include/SymbolResolver.h"
+#include <QApplication>
+#include "../include/ui/MonitorWindow.h"
 
-void InnerFunction() 
+int main(int argc, char* argv[])
 {
-    int* data = new int[5];
-    std::printf("  Allocated 5 ints in InnerFunction at %p\n", (void*)data);
-}
+    QApplication app(argc, argv);
 
-void MiddleFunction() 
-{
-    InnerFunction();
-}
+    app.setStyle("Fusion");
 
-void TopFunction()
-{
-    MiddleFunction();
-}
+    MonitorWindow window;
+    window.show();
 
-int main() 
-{
-    SymbolResolver resolver;
-
-    TopFunction();
-
-    AllocationRecord* records = AllocationRegistry::getInstance().GetRawData();
-
-    for (size_t i = 0; i < AllocationRegistry::MAX_RECORDS; ++i) 
-    {
-        if (records[i].active.load())
-        {
-            std::printf("Block: %p (%zu bytes)\n", records[i].address, records[i].size);
-
-            std::vector<ResolvedFrame> frames = resolver.Resolve(records[i].callstack, 12);
-
-            for (const auto& frame : frames) 
-            {
-                if (!frame.functionName.empty()) 
-                {
-                    std::printf("  -> %s (%s:%u)\n",
-                        frame.functionName.c_str(),
-                        frame.fileName.c_str(),
-                        frame.lineNumber);
-                }
-            }
-        }
-    }
-    std::getchar();
-
-    return 0;
+    return app.exec();
 }
