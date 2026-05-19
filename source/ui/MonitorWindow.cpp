@@ -35,14 +35,7 @@ void MonitorWindow::initLayout()
     QLabel* callstackTitle = new QLabel("Allocation call stack (Call Stack):", this);
     callstackTitle->setStyleSheet("font-weight: bold; color: #569CD6;");
 
-    m_callstackList = new QListWidget(this);
-    m_callstackList->setStyleSheet(
-        "background-color: #1E1E1E; "
-        "color: #D4D4D4; "
-        "font-family: 'Consolas', 'Courier New', monospace; "
-        "font-size: 11px; "
-        "border: 1px solid #333;"
-    );
+    m_callstackList = new CallstackWidget(this);
 
     rightLayout->addWidget(callstackTitle);
     rightLayout->addWidget(m_callstackList);
@@ -55,35 +48,25 @@ void MonitorWindow::initLayout()
 
         m_callstackList->clear();
 
-        
         AllocationRecord& record = m_payload->records[regIndex];
 
         if (!record.active.load(std::memory_order_relaxed)) 
         {
-            m_callstackList->addItem("[The record has already been released by the target application]");
+            m_callstackList->showMessage("[The record has already been released by the target application]");
             return;
         }
 
         std::vector<ResolvedFrame> frames = m_resolver.Resolve(record.callstack, 12);
 
-        m_callstackList->addItem(QString("Block Size: %1 bytes").arg(record.size));
-        m_callstackList->addItem(QString("Address in the heap: %1").arg(QString::number(reinterpret_cast<quintptr>(record.address), 16).toUpper()));
-
-        for (const auto& frame : frames)
+        QVector<CallstackFrameItem> widgetFrames;
+        for (const auto& f : frames)
         {
-            if (!frame.functionName.empty())
+            if (!f.functionName.empty())
             {
-                QString fullPath = QString::fromStdString(frame.fileName);
-                QString shortFileName = fullPath.section('\\', -1);
-
-                QString itemText = QString("  ⚡ %1\n    [%2 : string %3]")
-                    .arg(QString::fromStdString(frame.functionName))
-                    .arg(shortFileName.isEmpty() ? "The system module" : shortFileName)
-                    .arg(frame.lineNumber);
-
-                m_callstackList->addItem(itemText);
+                widgetFrames.append({ f.functionName, f.fileName, f.lineNumber });
             }
         }
+        m_callstackList->displayCallstack(record.address, record.size, widgetFrames);
         });
 }
 

@@ -7,8 +7,9 @@
 #include <windows.h>
 #include "../SharedMemory.h"
 #include "../AllocationRegistry.h"
-#include "MemoryMapWidget.h"
 #include "../SymbolResolver.h"
+#include "MemoryMapWidget.h"
+#include "CallstackWidget.h"
 
 class MonitorWindow : public QWidget
 {
@@ -31,7 +32,7 @@ private:
     QLabel* m_statusLabel;
     QLabel* m_infoLabel;
     MemoryMapWidget* m_memoryMap;
-    QListWidget* m_callstackList;
+    CallstackWidget* m_callstackList;
 
     SymbolResolver m_resolver;
 };
