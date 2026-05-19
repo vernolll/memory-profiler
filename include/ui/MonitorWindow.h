@@ -6,11 +6,14 @@
 #include <QLabel>
 #include <windows.h>
 #include "../SharedMemory.h"
+#include "../AllocationRegistry.h"
+#include "MemoryMapWidget.h"
+#include "../SymbolResolver.h"
 
-class MonitorWindow : public QMainWindow
+class MonitorWindow : public QWidget
 {
 public:
-    MonitorWindow(QWidget* parent = nullptr);
+    explicit MonitorWindow(QWidget* parent = nullptr);
     ~MonitorWindow();
 
 private slots:
@@ -26,5 +29,9 @@ private:
 
     QTimer* m_updateTimer;
     QLabel* m_statusLabel;
+    QLabel* m_infoLabel;
+    MemoryMapWidget* m_memoryMap;
     QListWidget* m_callstackList;
+
+    SymbolResolver m_resolver;
 };

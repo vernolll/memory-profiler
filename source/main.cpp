@@ -1,5 +1,5 @@
 #include <QApplication>
-#include "../include/ui/MonitorWindow.h"
+#include "../include/ui/MainWindow.h"
 
 int main(int argc, char* argv[])
 {
@@ -7,7 +7,7 @@ int main(int argc, char* argv[])
 
     app.setStyle("Fusion");
 
-    MonitorWindow window;
+    MainWindow window;
     window.show();
 
     return app.exec();
