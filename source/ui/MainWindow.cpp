@@ -21,6 +21,7 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent)
 
     createStatusBar();
 
+    setWindowFlags(Qt::Dialog | Qt::CustomizeWindowHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint);
     setWindowTitle("Core Memory Profiler v1.0");
     resize(1200, 700);
 }
@@ -32,12 +33,21 @@ void MainWindow::createActions()
     connect(m_exitAction, &QAction::triggered, this, &QWidget::close);
 
     m_aboutAction = new QAction("About the program", this);
-    connect(m_aboutAction, &QAction::triggered, this, [this]() 
+    connect(m_aboutAction, &QAction::triggered, this, [this]()
         {
-        QMessageBox::about(this, "About the program",
-            "<h3>Core Memory Profiler v1.0</h3>"
-            "<p>The tool is designed for high-speed allocation tracking "
-            "in real time via Shared Memory with minimal overhead.</p>");
+            QMessageBox aboutBox(this);
+            aboutBox.setWindowTitle("About the program");
+
+            aboutBox.setIcon(QMessageBox::Information);
+            aboutBox.setText("<h3>Core Memory Profiler v1.0</h3>"
+                "<p>The tool is designed for high-speed allocation tracking "
+                "in real time via Shared Memory with minimal overhead.</p>");
+
+            aboutBox.setStandardButtons(QMessageBox::Ok);
+
+            aboutBox.setWindowFlags(Qt::Dialog | Qt::CustomizeWindowHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint);
+
+            aboutBox.exec();
         });
 }
 

@@ -1,45 +1,56 @@
 #include <QApplication>
 #include <thread>
 #include <chrono>
+#include <vector>
+#include <random>
 #include "MainWindow.h"
-#include "MemoryTracker.h"
+#include "AllocationRegistry.h"
 
 extern AllocationRegistry g_Registry;
+
+struct FakeAlloc
+{
+    void* fakeAddress;
+    size_t size;
+};
 
 void simulateMemoryLoad() 
 {
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
-    std::vector<void*> allocatedBuffers;
-    size_t step = 0;
+    std::vector<FakeAlloc> activeAllocs;
 
-    while (true) 
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<uintptr_t> addrDist(0x10000000, 0x9FFFFFFF);
+    std::uniform_int_distribution<int> typeDist(0, 3);
+
+    while (true)
     {
+        void* randomAddress = reinterpret_cast<void*>(addrDist(gen));
+
         size_t blockSize = 16;
-        if (step % 4 == 1) blockSize = 128;
-        if (step % 4 == 2) blockSize = 1024;
-        if (step % 4 == 3) blockSize = 5000;
+        int type = typeDist(gen);
+        if (type == 1) blockSize = 128;
+        if (type == 2) blockSize = 1024;
+        if (type == 3) blockSize = 5000;
 
-        void* fakeAddress = ::malloc(blockSize);
+        void* mockStack[3] = { (void*)0x555555, (void*)0x666666, (void*)0x777777 };
 
-        void* mockStack[3] = { (void*)0x111111, (void*)0x222222, (void*)0x333333 };
+        g_Registry.Add(randomAddress, blockSize, mockStack, 3);
+        activeAllocs.push_back({ randomAddress, blockSize });
 
-        g_Registry.Add(fakeAddress, blockSize, mockStack, 3);
-        allocatedBuffers.push_back(fakeAddress);
-
-        if (allocatedBuffers.size() > 150)
+        if (activeAllocs.size() > 450) 
         {
-            for (size_t i = 0; i < 40; ++i)
+            for (int i = 0; i < 5; ++i)
             {
-                void* ptrToRemove = allocatedBuffers[i];
-                g_Registry.Remove(ptrToRemove);
-                ::free(ptrToRemove);
+                FakeAlloc toRemove = activeAllocs.front();
+                g_Registry.Remove(toRemove.fakeAddress);
+                activeAllocs.erase(activeAllocs.begin());
             }
-            allocatedBuffers.erase(allocatedBuffers.begin(), allocatedBuffers.begin() + 40);
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        step++;
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));
     }
 }
 
@@ -49,7 +60,6 @@ int main(int argc, char* argv[])
     loadThread.detach();
 
     QApplication app(argc, argv);
-
     app.setStyle("Fusion");
 
     MainWindow window;

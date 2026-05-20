@@ -18,11 +18,10 @@ MonitorWindow::MonitorWindow(QWidget* parent) : QWidget(parent)
 void MonitorWindow::initLayout()
 {
     QVBoxLayout* totalLayout = new QVBoxLayout(this);
-
     QHBoxLayout* topControlLayout = new QHBoxLayout();
 
     QLabel* filterLabel = new QLabel("Size Filter:", this);
-    filterLabel->setStyleSheet("color: #fff; font-weight: bold;");
+    filterLabel->setStyleSheet("color: #000; font-weight: bold;");
 
     m_filterCombo = new QComboBox(this);
     m_filterCombo->addItem("All allocations", QVariant(0));
@@ -57,45 +56,48 @@ void MonitorWindow::initLayout()
     m_infoLabel->setStyleSheet("color: #aaa; margin-bottom: 5px;");
     totalLayout->addWidget(m_infoLabel);
 
+    QHBoxLayout* titleLayout = new QHBoxLayout();
+    QLabel* callstackTitle = new QLabel("Allocation call stack:", this);
+    callstackTitle->setStyleSheet("font-weight: bold; color: #569CD6; margin-bottom: 2px;");
+
+    titleLayout->addStretch(3);
+    titleLayout->addWidget(callstackTitle, 2);
+    totalLayout->addLayout(titleLayout);
+
     QHBoxLayout* workLayout = new QHBoxLayout();
 
     m_memoryMap = new MemoryMapWidget(this);
-    workLayout->addWidget(m_memoryMap, 2);
 
-    QVBoxLayout* rightLayout = new QVBoxLayout();
-    QLabel* callstackTitle = new QLabel("Allocation call stack:", this);
-    callstackTitle->setStyleSheet("font-weight: bold; color: #569CD6;");
+    workLayout->addWidget(m_memoryMap, 3);
 
     m_callstackList = new CallstackWidget(this);
 
-    rightLayout->addWidget(callstackTitle);
-    rightLayout->addWidget(m_callstackList);
-    workLayout->addLayout(rightLayout, 1);
+    workLayout->addWidget(m_callstackList, 2);
 
-    totalLayout->addLayout(workLayout, 1); 
+    totalLayout->addLayout(workLayout, 1);
 
-    connect(m_memoryMap, &MemoryMapWidget::recordSelected, this, [this](int regIndex) 
+    connect(m_memoryMap, &MemoryMapWidget::recordSelected, this, [this](int regIndex)
         {
-        if (!m_payload) return;
+            if (!m_payload) return;
 
-        AllocationRecord& record = m_payload->records[regIndex];
-        if (!record.active.load(std::memory_order_relaxed)) 
-        {
-            m_callstackList->showMessage("[The block has already been released by the target application]");
-            return;
-        }
-
-        std::vector<ResolvedFrame> rawFrames = m_resolver.Resolve(record.callstack, 12);
-
-        QVector<CallstackFrameItem> widgetFrames;
-        for (const auto& f : rawFrames) 
-        {
-            if (!f.functionName.empty()) 
+            AllocationRecord& record = m_payload->records[regIndex];
+            if (!record.active.load(std::memory_order_relaxed))
             {
-                widgetFrames.append({ f.functionName, f.fileName, f.lineNumber });
+                m_callstackList->showMessage("[The block has already been released by the target application]");
+                return;
             }
-        }
-        m_callstackList->displayCallstack(record.address, record.size, widgetFrames);
+
+            std::vector<ResolvedFrame> rawFrames = m_resolver.Resolve(record.callstack, 12);
+
+            QVector<CallstackFrameItem> widgetFrames;
+            for (const auto& f : rawFrames)
+            {
+                if (!f.functionName.empty())
+                {
+                    widgetFrames.append({ f.functionName, f.fileName, f.lineNumber });
+                }
+            }
+            m_callstackList->displayCallstack(record.address, record.size, widgetFrames);
         });
 }
 
