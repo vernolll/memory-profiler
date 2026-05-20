@@ -9,6 +9,9 @@ struct SharedMemoryPayload
 {
     volatile uint32_t changeCounter;
     AllocationRecord records[AllocationRegistry::MAX_RECORDS];
+
+    volatile LONG totalProbesCount;
+    volatile LONG totalAllocsCount;
 };
 
 class SharedMemoryManager 

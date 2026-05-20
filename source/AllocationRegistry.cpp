@@ -84,6 +84,8 @@ void AllocationRegistry::Add(void* ptr, std::size_t size, void** stack, int stac
     {
         size_t curr = (index + i) % MAX_RECORDS;
 
+        InterlockedIncrement(&g_Shm.payload->totalProbesCount);
+
         bool expected = false;
         if (m_records[curr].active.compare_exchange_strong(expected, true))
         {
@@ -94,6 +96,7 @@ void AllocationRegistry::Add(void* ptr, std::size_t size, void** stack, int stac
             int frames = (stackFrames < 12) ? stackFrames : 12;
             std::memcpy(m_records[curr].callstack, stack, frames * sizeof(void*));
 
+            InterlockedIncrement(&g_Shm.payload->totalAllocsCount);
             InterlockedIncrement(&g_Shm.payload->changeCounter);
             return;
         }

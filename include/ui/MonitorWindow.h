@@ -13,16 +13,31 @@
 #include "MemoryMapWidget.h"
 #include "CallstackWidget.h"
 
+class MemoryHistoryWidget : public QWidget
+{
+public:
+    explicit MemoryHistoryWidget(QWidget* parent);
+
+    void addSample(double megabytes);
+
+protected:
+    void paintEvent(QPaintEvent* event) override;
+
+private:
+    QVector<double> m_history;
+};
+
 class MonitorWindow : public QWidget
 {
 public:
-    explicit MonitorWindow(QWidget* parent = nullptr);
+    explicit MonitorWindow(QWidget* parent);
     ~MonitorWindow();
 
 private slots:
     void updateProfilerData();
     void applyFilter(int index);
     void forceReconnect();
+    void exportCurrentReport();
 
 private:
     void initLayout();
@@ -44,4 +59,6 @@ private:
     SymbolResolver m_resolver;
 
     size_t m_minSizeFilter = 0;
+
+    MemoryHistoryWidget* m_historyChart;
 };
