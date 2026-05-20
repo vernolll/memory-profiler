@@ -1,4 +1,4 @@
-\# Core Memory Profiler (CMP) 🚀
+# Core Memory Profiler (CMP) 🚀
 
 
 
