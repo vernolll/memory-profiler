@@ -1,4 +1,4 @@
-# Core Memory Profiler (CMP) 🚀
+# Core Memory Profiler (CMP) 
 
 
 
@@ -8,7 +8,7 @@ This project was developed from scratch to create a lightweight tool that hooks 
 
 ---
 
-## 🌟 Key Features
+## Key Features
 
 * **Zero-Latency Tracking ($O(1)$ Complexity):** Leverages an open-addressed cyclic hash table with a linear probing limit ($MAX\_PROBES = 32$) to guarantee predictable, atomic, and deterministic allocation tracking without stalling target threads.
 * **Lock-Free Shared Memory IPC:** Avoids slow OS-level synchronization primitives or socket overhead. The data is shared instantly between the target process and the monitoring GUI via Win32 Shared Memory (`CreateFileMappingA` / `MapViewOfFile`).
@@ -20,7 +20,7 @@ This project was developed from scratch to create a lightweight tool that hooks 
 
 ---
 
-## 🏗️ Architectural Overview
+## Architectural Overview
 
 The project is split into two tightly coupled modules designed to balance high performance and modern UI aesthetics:
 
@@ -38,7 +38,7 @@ The project is split into two tightly coupled modules designed to balance high p
 
 
 
-## 🎨 Visualization Color Reference
+## Visualization Color Reference
 
 
 
@@ -91,7 +91,7 @@ mkdir build \&\& cd build
 
 
 
-### 🚀 Running the Enthusiast Simulation
+### Running the Enthusiast Simulation
 
 To observe the dynamic real-time memory fragmentation, memory leak tracking, and hash collision mechanics without hooking a production engine immediately, the project contains an embedded simulation module inside main.cpp.
 
@@ -113,7 +113,7 @@ Upon starting, the simulation thread spins up and allocates hundreds of pseudo-r
 
 
 
-### 📜 License \& Intent
+### License \& Intent
 
 This project is shared entirely in the spirit of open-source engineering, low-level optimization exploration, and tool development enthusiasm. Feel free to fork, expand, modify, or embed this tracking core into your custom game engines, database experiments, or memory-sensitive desktop frameworks!
 
